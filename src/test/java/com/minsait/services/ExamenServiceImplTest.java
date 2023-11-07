@@ -3,8 +3,11 @@ package com.minsait.services;
 import com.minsait.models.Examen;
 import com.minsait.repositories.ExamenRepository;
 import com.minsait.repositories.PreguntaRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -24,6 +27,29 @@ class ExamenServiceImplTest {
     PreguntaRepository preguntaRepository;
     @InjectMocks
     ExamenServiceImpl service;
+
+    @Captor
+    ArgumentCaptor<Long> captor;
+
+    /*@BeforeEach
+    void setUp() {
+        ArgumentCaptor<Long> captor = ArgumentCaptor.forClass(Long.class);
+    }*/
+
+    @Test
+    void testArgumentCaptor(){
+        //Given
+        when(examenRepository.findAll()).thenReturn(Datos.EXAMENES);
+        when(preguntaRepository.findPreguntasByExamenId(anyLong())).thenReturn(Datos.PREGUNTAS);
+        //When
+        service.findExamenPorNombreConPreguntas("Matematicas");
+        //Then
+        verify(preguntaRepository).findPreguntasByExamenId(captor.capture());
+        assertEquals(1L, captor.getValue());
+
+
+    }
+
     @Test
     void testFindExamenPorNombre() {
         when(examenRepository.findAll()).thenReturn(Datos.EXAMENES);
@@ -99,7 +125,7 @@ class ExamenServiceImplTest {
     }
 
     @Test
-    void testSaveExam(){
+    void testSaveExamWithQuestions(){
         //Given
         Examen newExamen = Datos.EXAMEN;
         newExamen.setPreguntas(Datos.PREGUNTAS);
@@ -111,19 +137,61 @@ class ExamenServiceImplTest {
         //Then
         assertEquals(1L, examen.getId());
         assertEquals("Matematicas", examen.getNombre());
+        assertEquals(5, examen.getPreguntas().size());
         verify(examenRepository).save(any(Examen.class));
         verify(preguntaRepository).savePreguntas(anyList());
     }
 
     @Test
     void testSaveExamWithoutQuestions(){
+        //Given
         Examen newExamen = Datos.EXAMEN;
         when(examenRepository.save(any(Examen.class))).thenReturn(Datos.EXAMEN);
 
+        //When
         Examen examen = service.save(newExamen);
 
+        //Then
         assertEquals(1L, examen.getId());
         assertEquals("Matematicas", examen.getNombre());
+        assertEquals(0, examen.getPreguntas().size());
+    }
 
+    @Test
+    void testGetID(){
+        Examen newExamen = new Examen(null, "Matematicas");
+        when(examenRepository.save(any(Examen.class))).then(invocationOnMock -> {
+            Examen examen = invocationOnMock.getArgument(0);
+            examen.setId(5L);
+            return examen;
+        });
+
+        Examen examen = service.save(newExamen);
+
+        assertEquals(5L, examen.getId());
+        assertEquals("Matematicas", examen.getNombre());
+        assertEquals(0, examen.getPreguntas().size());
+    }
+
+    @Test
+    void testSaveExamenInClass(){
+        //Given
+        Examen newExamen = new Examen(null, "Matematicas");
+        //newExamen.setPreguntas(Datos.PREGUNTAS);
+        when(examenRepository.save(any(Examen.class))).then(invocationOnMock -> {
+            Examen examen = invocationOnMock.getArgument(0);
+            examen.setId(5L);
+            return examen;
+        });
+
+        //When
+        Examen examen = service.save(newExamen);
+
+        //Then
+        assertEquals(5L, examen.getId());
+        assertEquals("Matematicas", examen.getNombre());
+        assertEquals(0, examen.getPreguntas().size());
+        //assertEquals(3, examen.getPreguntas().size());
+        verify(preguntaRepository, times(0)).savePreguntas(anyList());
     }
 }
